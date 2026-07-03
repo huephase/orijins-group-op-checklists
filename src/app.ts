@@ -10,10 +10,13 @@ import Fastify from 'fastify';
 import nunjucks from 'nunjucks';
 import { authRoutes } from './auth/auth.routes.js';
 import { currentUserPlugin } from './auth/session.js';
+import { PrismaSessionStore } from './auth/session-store.js';
+import { prisma } from './db/prisma.js';
 import type { MainConfig } from './config/config.schema.js';
 import type { Environment } from './config/env.js';
 import { formRoutes } from './forms/form.routes.js';
 import { tenantPlugin } from './tenants/tenant.middleware.js';
+import { uploadRoutes } from './uploads/upload.routes.js';
 
 export async function buildApp(config: MainConfig, env: Environment) {
   const app = Fastify({
@@ -21,6 +24,7 @@ export async function buildApp(config: MainConfig, env: Environment) {
     trustProxy: env.TRUST_PROXY,
     bodyLimit: config.uploads.maxFileSizeMb * 1024 * 1024,
   });
+  app.addContentTypeParser('*', { parseAs: 'buffer' }, (_req, body, done) => done(null, body));
   await app.register(helmet, {
     contentSecurityPolicy: {
       directives: {
@@ -35,6 +39,7 @@ export async function buildApp(config: MainConfig, env: Environment) {
   await app.register(cookie);
   await app.register(session, {
     secret: env.SESSION_SECRET,
+    store: new PrismaSessionStore(prisma),
     cookieName: 'ops_session',
     cookie: {
       httpOnly: true,
@@ -71,6 +76,7 @@ export async function buildApp(config: MainConfig, env: Environment) {
   await app.register(currentUserPlugin);
   await app.register(authRoutes);
   await app.register(formRoutes);
+  await app.register(uploadRoutes, { config, env });
   app.get('/', async (request, reply) =>
     request.currentUser
       ? reply.view('dashboard.njk', {

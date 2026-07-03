@@ -1,21 +1,26 @@
 import { loadConfig } from './config/loadConfig.js';
 import { prisma } from './db/prisma.js';
+import { cleanupExpiredUploads } from './uploads/upload.service.js';
 
 const config = await loadConfig();
+const storageDir = new URL('../tmp/uploads/', import.meta.url).pathname;
+
 const interval = setInterval(async () => {
-  // Integration seam for private S3 deletion and scheduled Postmark reports.
-  // Jobs remain database-backed so multiple worker replicas can later claim them safely.
-  const due = await prisma.reportJob.count({ where: { status: 'QUEUED' } });
-  if (due)
+  const expiredSessions = await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  const expiredUploads = await cleanupExpiredUploads({ storageDir, now: new Date() }).catch(() => 0);
+  const dueReports = await prisma.reportJob.count({ where: { status: 'QUEUED' } });
+  if (expiredSessions.count || expiredUploads || dueReports)
     console.info(
-      { due, sendHourUtc: config.reports.sendHourUtc },
-      'report jobs awaiting a configured email provider',
+      { expiredSessions: expiredSessions.count, expiredUploads, dueReports },
+      'worker maintenance cycle completed',
     );
 }, 60_000);
+
 const close = async () => {
   clearInterval(interval);
   await prisma.$disconnect();
   process.exit(0);
 };
+
 process.on('SIGTERM', () => void close());
 process.on('SIGINT', () => void close());

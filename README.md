@@ -20,10 +20,21 @@ Upload, email, admin CRUD, and report generation are integration seams rather th
 2. Start PostgreSQL: `docker compose up -d postgres`.
 3. Install and generate: `npm install && npm run prisma:generate`.
 4. Create a migration from `prisma/schema.prisma`, review it, append the RLS statements from `prisma/rls.sql`, and apply it.
-5. Provision the configured tenant and an initial admin using a controlled script or SQL migration.
+5. Provision the configured tenant and an initial admin using `npm run provision`.
 6. Run `npm run dev` and open `http://localhost:3000`.
 
 The application intentionally returns `503` until a `tenants` row exists for the configured hostname. This prevents silently running without database-backed tenant identity.
+
+For a quick smoke test after login, open `/forms/basic_test_checklist/new`. It uses a minimal set of fields and skips GPS and signature capture so you can validate the full browser-to-server form flow quickly in Docker.
+
+The provisioning script defaults to:
+
+- tenant slug: `orijins`
+- user email: `admin@localhost`
+- username: `admin`
+- password: `ChangeMe123!`
+
+You can override those values with `PROVISION_TENANT_SLUG`, `PROVISION_USER_EMAIL`, `PROVISION_USER_USERNAME`, `PROVISION_USER_DISPLAY_NAME`, and `PROVISION_USER_PASSWORD`.
 
 ## Quality commands
 

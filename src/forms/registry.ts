@@ -37,7 +37,38 @@ const dailyOpeningChecklist = {
   ],
 } as const satisfies FormDefinition;
 
-export const formRegistry = { [dailyOpeningChecklist.key]: dailyOpeningChecklist } as const;
+const basicTestChecklist = {
+  key: 'basic_test_checklist',
+  version: 1,
+  title: 'Basic Test Checklist',
+  description: 'A lightweight form for quickly verifying the app end to end in Docker.',
+  schedule: 'daily',
+  requiresGps: false,
+  gpsFailureMode: 'require-reason',
+  requiresSignature: false,
+  fields: [
+    { type: 'text', name: 'siteName', label: 'Site name', required: true },
+    {
+      type: 'radio',
+      name: 'serviceReady',
+      label: 'Service ready',
+      options: ['Yes', 'No'],
+      required: true,
+    },
+    {
+      type: 'checkbox',
+      name: 'musicOn',
+      label: 'Background music on',
+      required: false,
+    },
+    { type: 'textarea', name: 'notes', label: 'Notes', required: false },
+  ],
+} as const satisfies FormDefinition;
+
+export const formRegistry = {
+  [dailyOpeningChecklist.key]: dailyOpeningChecklist,
+  [basicTestChecklist.key]: basicTestChecklist,
+} as const;
 export type FormKey = keyof typeof formRegistry;
 
 export function getFormDefinition(key: string): FormDefinition | undefined {
