@@ -1,0 +1,36 @@
+{
+  "app": {
+    "name": "Restaurant Operations Forms",
+    "baseUrl": "http://localhost:3000",
+    "timezoneOffset": "+04:00",
+    "defaultLocale": "en"
+  },
+  "uploads": {
+    "maxFileSizeMb": 10,
+    "allowedImageMimeTypes": ["image/jpeg", "image/png", "image/webp"],
+    "expirationDays": 60,
+    "signedUrlTtlSeconds": 900
+  },
+  "security": {
+    "rateLimitWindowMs": 60000,
+    "rateLimitMaxRequests": 120,
+    "uploadRateLimitMaxRequests": 20,
+    "sessionTtlHours": 12
+  },
+  "reports": { "weeklySendDay": "Monday", "monthlySendDay": 1, "sendHourUtc": 5 },
+  "tenants": {
+    "orijins": {
+      "displayName": "Orijins",
+      "hostname": "localhost",
+      "logoPath": "/assets/tenants/orijins/logo.svg",
+      "faviconPath": "/assets/favicon.svg",
+      "palette": {
+        "primary": "#17130f",
+        "secondary": "#f2ede5",
+        "accent": "#9a6b3f",
+        "background": "#fffdf9",
+        "text": "#211c17"
+      }
+    }
+  }
+}

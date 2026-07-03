@@ -1,0 +1,1 @@
+{% extends "layout.njk" %}{% block content %}<h1>Forms</h1><div class="form-list">{% for form in forms %}<article><div><small>{{ form.schedule | capitalize }} · v{{ form.version }}</small><h2>{{ form.title }}</h2><p>{{ form.description }}</p></div><a class="button" href="/forms/{{ form.key }}/new">Start</a></article>{% endfor %}</div>{% endblock %}

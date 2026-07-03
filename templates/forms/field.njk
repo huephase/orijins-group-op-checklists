@@ -1,0 +1,8 @@
+{% macro render(field) %}<fieldset class="field" data-field="{{ field.name }}"><legend>{{ field.label }}{% if field.required %}<span aria-hidden="true"> *</span>{% endif %}</legend>{% if field.help %}<p class="help">{{ field.help }}</p>{% endif %}
+{% if field.type == 'textarea' %}<textarea name="{{ field.name }}" rows="4" {% if field.required %}required{% endif %}></textarea>
+{% elif field.type == 'radio' %}<div class="choices">{% for option in field.options %}<label><input type="radio" name="{{ field.name }}" value="{{ option }}" {% if field.required %}required{% endif %}> {{ option }}</label>{% endfor %}</div>
+{% elif field.type == 'select' %}<select name="{{ field.name }}" {% if field.required %}required{% endif %}><option value="">Choose…</option>{% for option in field.options %}<option>{{ option }}</option>{% endfor %}</select>
+{% elif field.type == 'checkbox' %}<label class="check"><input type="checkbox" name="{{ field.name }}" {% if field.required %}required{% endif %}> Confirmed</label>
+{% elif field.type == 'photo' %}<input type="file" name="{{ field.name }}" accept="image/jpeg,image/png,image/webp" capture="environment" {% if field.required %}required{% endif %}>
+{% elif field.type == 'signature' %}<div class="signature"><canvas width="700" height="220" aria-label="{{ field.label }} signature area"></canvas><input type="hidden" name="{{ field.name }}" {% if field.required %}required{% endif %}><button type="button" class="secondary clear-signature">Clear</button></div>
+{% else %}<input name="{{ field.name }}" type="text" {% if field.required %}required{% endif %}>{% endif %}</fieldset>{% endmacro %}

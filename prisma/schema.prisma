@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  CONTRIBUTOR
+  VIEWER
+  AUDITOR
+}
+
+enum SubmissionState {
+  DRAFT
+  PENDING_VERIFICATION
+  SUBMITTED
+}
+
+enum SignatureRole {
+  SUBMITTER
+  VERIFIER
+}
+
+enum ReportStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model Tenant {
+  id String @id @default(uuid()) @db.Uuid
+  slug String @unique
+  displayName String @map("display_name")
+  hostname String @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  users User[]
+  submissions FormSubmission[]
+  auditEvents AuditEvent[]
+  @@map("tenants")
+}
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  email String
+  username String
+  displayName String @map("display_name")
+  passwordHash String @map("password_hash")
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  roles UserRole[]
+  submissions FormSubmission[] @relation("Submitter")
+  auditEvents AuditEvent[]
+  @@unique([tenantId, email])
+  @@unique([tenantId, username])
+  @@map("users")
+}
+
+model UserRole {
+  tenantId String @map("tenant_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role Role
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, role])
+  @@index([tenantId])
+  @@map("user_roles")
+}
+
+model FormSubmission {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formKey String @map("form_key")
+  formVersion Int @map("form_version")
+  state SubmissionState @default(DRAFT)
+  values Json
+  idempotencyKey String @map("idempotency_key") @db.Uuid
+  submitterId String @map("submitter_id") @db.Uuid
+  gpsLatitude Decimal? @map("gps_latitude") @db.Decimal(9, 6)
+  gpsLongitude Decimal? @map("gps_longitude") @db.Decimal(9, 6)
+  gpsAccuracy Decimal? @map("gps_accuracy") @db.Decimal(8, 2)
+  gpsUnavailableReason String? @map("gps_unavailable_reason")
+  deviceMetadata Json? @map("device_metadata")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  submittedAt DateTime? @map("submitted_at") @db.Timestamptz
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  submitter User @relation("Submitter", fields: [submitterId], references: [id])
+  signatures FormSignature[]
+  files FormSubmissionFile[]
+  verification VerificationAssignment?
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, formKey, createdAt])
+  @@map("form_submissions")
+}
+
+model FormSubmissionFile {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  submissionId String @map("submission_id") @db.Uuid
+  s3Key String @map("s3_key")
+  originalFilename String @map("original_filename")
+  generatedFilename String @map("generated_filename")
+  mimeType String @map("mime_type")
+  byteSize Int @map("byte_size")
+  checksum String
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  submission FormSubmission @relation(fields: [submissionId], references: [id])
+  @@index([tenantId, expiresAt])
+  @@map("form_submission_files")
+}
+
+model FormSignature {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  submissionId String @map("submission_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  role SignatureRole
+  vectorPayload String? @map("vector_payload")
+  s3Key String? @map("s3_key")
+  signedAt DateTime @default(now()) @map("signed_at") @db.Timestamptz
+  metadata Json?
+  submission FormSubmission @relation(fields: [submissionId], references: [id])
+  @@index([tenantId, submissionId])
+  @@map("form_signatures")
+}
+
+model VerificationAssignment {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  submissionId String @unique @map("submission_id") @db.Uuid
+  verifierId String? @map("verifier_id") @db.Uuid
+  verifiedAt DateTime? @map("verified_at") @db.Timestamptz
+  submission FormSubmission @relation(fields: [submissionId], references: [id])
+  @@index([tenantId, verifierId])
+  @@map("verification_assignments")
+}
+
+model FormSetting {
+  tenantId String @map("tenant_id") @db.Uuid
+  formKey String @map("form_key")
+  enabled Boolean @default(true)
+  requiresVerification Boolean @default(false) @map("requires_verification")
+  verifierRole Role? @map("verifier_role")
+  @@id([tenantId, formKey])
+  @@map("form_settings")
+}
+
+model AuditEvent {
+  id BigInt @id @default(autoincrement())
+  tenantId String @map("tenant_id") @db.Uuid
+  userId String? @map("user_id") @db.Uuid
+  entityType String @map("entity_type")
+  entityId String @map("entity_id")
+  action String
+  metadata Json?
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
+  @@index([tenantId, occurredAt])
+  @@map("audit_events")
+}
+
+model ReportJob {
+  id String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  status ReportStatus @default(QUEUED)
+  dateFrom DateTime @map("date_from") @db.Timestamptz
+  dateTo DateTime @map("date_to") @db.Timestamptz
+  filters Json
+  error String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  completedAt DateTime? @map("completed_at") @db.Timestamptz
+  @@index([tenantId, createdAt])
+  @@map("report_jobs")
+}
